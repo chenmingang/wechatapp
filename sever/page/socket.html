@@ -1,0 +1,123 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <script src="http://cdn.socket.io/socket.io-1.4.0.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <link href="http://cdn.bootcss.com/bootstrap/3.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+       body{
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        display: none;
+       } 
+       .bs-callout {
+          padding: 5px;
+          border-left-width: 5px;
+          border-radius: 3px;
+          height: 100%;
+          overflow-y: scroll;
+          list-style-type: none;
+        }
+        #allRooms{
+          -position: absolute;
+        }
+        #message{
+          height: 100%;
+          width: 100%
+        }
+    </style>
+  </head>
+  <body>
+    <script>
+      var socket;
+
+      var socketInit = function(socket){  
+
+        socket.on('newMessage', function(data) {
+          console.log(data.data);
+          $('#messageList').append("<li>"+data.data+"</li>");
+        });
+        socket.on('allRooms', function(data) {
+          console.log(data.data);
+          $('#existRooms').html("");
+          for (var i = data.data.length - 1; i >= 0; i--) {
+            var room = data.data[i];
+            $('#existRooms').append("<li class='btn btn-sm btn-success'>"+room+"</li>");
+          };
+        });
+        socket.on('newRoom', function(data) {
+          console.log(data.data);
+          $('#existRooms').append("<li class='btn btn-sm btn-success'>"+data.data+"</li>");
+        });
+      }
+      
+      var changeRoom = function(room) {
+        socket.disconnect();
+        socket = io.connect('',{query: 'room='+room});
+        socketInit(socket);
+        console.log("changeRoom:"+room)
+      }
+      var addRoom = function () {
+        changeRoom($( "#newRoomInput" ).val() );
+      }
+      var sendMessage = function () {
+        var m = $('#sendMessage').val();
+        if(m==''){
+          return;
+        }
+        var u = $('#senderName').val();
+        if(u!=''){
+          m = u+" -> "+m;
+        }
+        console.log("send message");
+        socket.emit('sendMessage', {
+          'data': m
+        });
+        setTimeout(function() {
+            $('#sendMessage').val('');
+        }, 10);
+        $("#messageList").animate({ scrollTop: $(document).height() }, 1000);
+      }
+
+      $(document).ready(function(){
+        socket = io.connect('',{query: 'room=default'});
+        socketInit(socket);
+        $('#sendMessage').keypress(function(e){
+          if(e.keyCode == 13){
+              sendMessage();
+           }
+        });
+        $('#existRooms').on( "click", 'li', function() {
+          changeRoom($( this ).text() );
+        });
+        $("#message").height(((window.innerHeight-68)/window.innerHeight)*100+'%');
+        $('body').show();
+
+      });
+
+    </script>
+    <div id="allRooms">
+      <div id="existRooms" style="float: left;"></div>
+      <div class="input-group" style="width: 100px;float: left;">
+        <input  id="newRoomInput" type="text" class="form-control" style="height: 30px;">
+        <span class="input-group-btn">
+          <button class="btn btn-sm btn-default" type="button" onclick="addRoom()">Add</button>
+        </span>
+      </div>
+    </div>
+    <div style="clear:both;"></div>
+    <div id="message">
+      <div id="messageList" class="bs-callout"></div>
+      <div id="inputBox" class="input-group">
+        <input  id="senderName" type="text" class="form-control" style="width:20%;" placeholder="发送人">
+        <input  id="sendMessage" type="text" class="form-control" style="width:80%;" placeholder="消息">
+        <span class="input-group-btn">
+          <button class="btn btn-default" type="button" onclick="sendMessage()">Send</button>
+        </span>
+      </div>
+    </div>
+    
+  </body>
+</html>
